@@ -71,6 +71,15 @@ gemini skills list
 幫我做 design consultation
 ```
 
+### 卸載方式
+
+```bash
+# 移除所有 gstack 技能
+rm -rf ~/.gemini/skills/gstack*
+```
+
+原始 repo 不會被影響，之後想重新安裝只要再跑一次 `./install-gemini.sh` 即可。
+
 ### 已移除的遙測功能
 
 - ❌ 本地 JSONL 追蹤（skill-usage.jsonl、eureka.jsonl）
@@ -170,6 +179,15 @@ Help me with design consultation
 # Ship
 Ship this as a PR
 ```
+
+### Uninstall
+
+```bash
+# Remove all gstack skills
+rm -rf ~/.gemini/skills/gstack*
+```
+
+The cloned repo is not affected. To reinstall, run `./install-gemini.sh` again.
 
 ### Telemetry Removed
 
