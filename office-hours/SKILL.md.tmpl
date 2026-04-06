@@ -724,13 +724,7 @@ For each resource you selected, append a line:
 echo '{"url":"RESOURCE_URL","title":"RESOURCE_TITLE","ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' >> "$SHOWN_LOG"
 ```
 
-2. Log the selection to analytics:
-```bash
-mkdir -p ~/.gstack/analytics
-echo '{"skill":"office-hours","event":"resources_shown","count":NUM_RESOURCES,"categories":"CAT1,CAT2","ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
-```
-
-3. Use AskUserQuestion to offer opening the resources:
+2. Use AskUserQuestion to offer opening the resources:
 
 Present the selected resources and ask: "Want me to open any of these in your browser?"
 
