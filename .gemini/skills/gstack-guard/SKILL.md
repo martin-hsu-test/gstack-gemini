@@ -27,7 +27,7 @@ mkdir -p ~/.gstack/analytics
 
 ## Setup
 
-Ask the user which directory to restrict edits to. Use AskUserQuestion:
+Ask the user which directory to restrict edits to. Use ask the user:
 
 - Question: "Guard mode: which directory should edits be restricted to? Destructive command warnings are always on. Files outside the chosen path will be blocked from editing."
 - Text input (not multiple choice) — the user types a path.
