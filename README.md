@@ -74,8 +74,8 @@ gemini skills list
 ### 卸載方式
 
 ```bash
-# 移除所有 gstack 技能
-rm -rf ~/.gemini/skills/gstack*
+# 使用卸載腳本
+./uninstall-gemini.sh
 ```
 
 原始 repo 不會被影響，之後想重新安裝只要再跑一次 `./install-gemini.sh` 即可。
@@ -183,8 +183,8 @@ Ship this as a PR
 ### Uninstall
 
 ```bash
-# Remove all gstack skills
-rm -rf ~/.gemini/skills/gstack*
+# Use the uninstall script
+./uninstall-gemini.sh
 ```
 
 The cloned repo is not affected. To reinstall, run `./install-gemini.sh` again.
