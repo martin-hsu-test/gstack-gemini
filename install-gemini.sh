@@ -64,21 +64,13 @@ if [ -L "$GSTACK_RUNTIME" ] || [ -d "$GSTACK_RUNTIME" ]; then
   done
 fi
 
-# Build browse binary if bun is available
-if command -v bun >/dev/null 2>&1; then
-  if [ ! -f "$SCRIPT_DIR/browse/dist/browse" ]; then
-    echo ""
-    echo "🔨 Building browse binary..."
-    cd "$SCRIPT_DIR" && bun install --quiet && bun run build 2>&1 | tail -3
-    echo "   ✅ Browse binary built"
-  else
-    echo ""
-    echo "✅ Browse binary already exists"
-  fi
-else
+# Browse binary is optional — only needed for browser-based skills
+# (qa, browse, design-review, benchmark, canary, devex-review)
+if [ ! -f "$SCRIPT_DIR/browse/dist/browse" ]; then
   echo ""
-  echo "⚠️  Bun not installed — browse skills won't work without it."
-  echo "   Install: curl -fsSL https://bun.sh/install | bash"
+  echo "ℹ️  Browse binary not built (optional)."
+  echo "   Only needed for: qa, browse, design-review, benchmark, canary, devex-review"
+  echo "   To build: cd $(basename "$SCRIPT_DIR") && bun install && bun run build"
 fi
 
 echo ""
