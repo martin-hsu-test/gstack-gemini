@@ -34,6 +34,7 @@ echo "📦 Installing skills..."
 SKILL_COUNT=0
 for skill_dir in "$SCRIPT_DIR"/.gemini/skills/gstack*; do
   skill_name="$(basename "$skill_dir")"
+  [ "$skill_name" = "gstack-upgrade" ] && continue
   target="$GEMINI_SKILLS_DIR/$skill_name"
 
   # Remove existing link/dir

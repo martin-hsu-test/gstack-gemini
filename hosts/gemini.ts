@@ -19,7 +19,7 @@ const gemini: HostConfig = {
 
   generation: {
     generateMetadata: false,
-    skipSkills: ['codex'],  // Codex skill is a Claude wrapper
+    skipSkills: ['codex', 'gstack-upgrade'],  // Codex is Claude wrapper; upgrade may overwrite our fork
   },
 
   pathRewrites: [
