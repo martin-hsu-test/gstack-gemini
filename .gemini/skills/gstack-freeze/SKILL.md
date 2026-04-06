@@ -23,7 +23,7 @@ mkdir -p ~/.gstack/analytics
 
 ## Setup
 
-Ask the user which directory to restrict edits to. Use ask the user:
+Ask the user which directory to restrict edits to. Use AskUserQuestion:
 
 - Question: "Which directory should I restrict edits to? Files outside this path will be blocked from editing."
 - Text input (not multiple choice) — the user types a path.

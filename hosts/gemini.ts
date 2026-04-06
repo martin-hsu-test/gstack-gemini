@@ -27,9 +27,6 @@ const gemini: HostConfig = {
     { from: '.claude/skills/gstack', to: '.gemini/skills/gstack' },
     { from: '.claude/skills/review', to: '.gemini/skills/gstack/review' },
     { from: '.claude/skills', to: '.gemini/skills' },
-    { from: 'CLAUDE.md', to: 'GEMINI.md' },
-    { from: 'AskUserQuestion', to: 'ask the user' },
-    { from: 'ExitPlanMode', to: 'exit plan mode' },
   ],
 
   suppressedResolvers: [
@@ -40,7 +37,7 @@ const gemini: HostConfig = {
   ],
 
   runtimeRoot: {
-    globalSymlinks: ['bin', 'browse/dist', 'browse/bin', 'ETHOS.md'],
+    globalSymlinks: ['bin', 'browse/dist', 'browse/bin', 'gstack-upgrade', 'ETHOS.md'],
     globalFiles: {
       'review': ['checklist.md', 'TODOS-format.md'],
     },

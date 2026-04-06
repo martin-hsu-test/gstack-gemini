@@ -11,35 +11,6 @@ import { getHostConfig } from '../../hosts/index';
 
 function generatePreambleBash(ctx: TemplateContext): string {
   const hostConfig = getHostConfig(ctx.host);
-
-  // Gemini: lean preamble — paths, branch, learnings only
-  if (ctx.host === 'gemini') {
-    return `## Preamble (run first)
-
-\`\`\`bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-GSTACK_ROOT="$HOME/${hostConfig.globalRoot}"
-[ -n "$_ROOT" ] && [ -d "$_ROOT/${ctx.paths.localSkillRoot}" ] && GSTACK_ROOT="$_ROOT/${ctx.paths.localSkillRoot}"
-GSTACK_BIN="$GSTACK_ROOT/bin"
-GSTACK_BROWSE="$GSTACK_ROOT/browse/dist"
-GSTACK_DESIGN="$GSTACK_ROOT/design/dist"
-_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
-echo "BRANCH: $_BRANCH"
-# Learnings
-eval "$(${ctx.paths.binDir}/gstack-slug 2>/dev/null)" 2>/dev/null || true
-_LEARN_FILE="\${GSTACK_HOME:-$HOME/.gstack}/projects/\${SLUG:-unknown}/learnings.jsonl"
-if [ -f "$_LEARN_FILE" ]; then
-  _LEARN_COUNT=$(wc -l < "$_LEARN_FILE" 2>/dev/null | tr -d ' ')
-  echo "LEARNINGS: $_LEARN_COUNT entries loaded"
-  if [ "$_LEARN_COUNT" -gt 5 ] 2>/dev/null; then
-    ${ctx.paths.binDir}/gstack-learnings-search --limit 3 2>/dev/null || true
-  fi
-else
-  echo "LEARNINGS: 0"
-fi
-\`\`\``;
-  }
-
   const runtimeRoot = hostConfig.usesEnvVars
     ? `_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 GSTACK_ROOT="$HOME/${hostConfig.globalRoot}"
@@ -402,34 +373,6 @@ Use AskUserQuestion:
 - Note in output: "Pre-existing test failure skipped: <test-name>"`;
 }
 
-function generateGeminiDecisionFormat(): string {
-  return `## Decision Format
-
-When presenting choices to the user:
-1. **Re-ground:** State the project and current branch (from preamble output). One sentence.
-2. **Explain simply:** Plain language a smart 16-year-old could follow. Name files, functions, commands.
-3. **Recommend:** State your recommendation and why. Prefer the complete option over shortcuts.
-4. **Options:** A) B) C) with effort estimates when relevant.
-
-Bias toward completeness. AI makes thorough work near-free. Do the complete thing.`;
-}
-
-function generateTestFailureTriageGemini(): string {
-  return `## Test Failure Triage
-
-When tests fail, classify each failure before stopping:
-
-1. **In-branch:** test file or code it tests was modified on this branch → STOP, fix before proceeding.
-2. **Pre-existing:** neither test file nor tested code was modified → note it, continue workflow.
-
-For pre-existing failures, ask the user:
-- A) Fix now (recommended for solo repos)
-- B) Add as TODO
-- C) Skip
-
-When ambiguous, default to in-branch. Safer to stop than to ship broken tests.`;
-}
-
 function generateSearchBeforeBuildingSection(ctx: TemplateContext): string {
   return `## Search Before Building
 
@@ -685,19 +628,6 @@ export function generatePreamble(ctx: TemplateContext): string {
   if (tier < 1 || tier > 4) {
     throw new Error(`Invalid preamble-tier: ${tier} in ${ctx.tmplPath}. Must be 1-4.`);
   }
-
-  // Gemini: lean preamble — skip Claude-specific onboarding, routing, vendoring
-  if (ctx.host === 'gemini') {
-    const sections = [
-      generatePreambleBash(ctx),
-      generateVoiceDirective(tier),
-      ...(tier >= 2 ? [generateGeminiDecisionFormat(), generateSearchBeforeBuildingSection(ctx)] : []),
-      ...(tier >= 4 ? [generateTestFailureTriageGemini()] : []),
-      generateCompletionStatus(ctx),
-    ];
-    return sections.join('\n\n');
-  }
-
   const sections = [
     generatePreambleBash(ctx),
     generateUpgradeCheck(ctx),
