@@ -1,46 +1,42 @@
 ---
 name: guard
 description: |
-  Full safety mode: destructive command warnings + directory-scoped edits.
-  Combines /careful (warns before rm -rf, DROP TABLE, force-push, etc.) with
-  /freeze (blocks edits outside a specified directory). Use for maximum safety
-  when touching prod or debugging live systems. Use when asked to "guard mode",
-  "full safety", "lock it down", or "maximum safety". (gstack)
+  完整安全模式 = careful + freeze 組合。危險指令警告（rm -rf、DROP TABLE、force-push
+  等）+ 限制在指定目錄外不能編輯。碰正式環境或線上除錯時使用。
+  說「guard 模式」、「完整安全模式」、「鎖住」、「最高安全」時觸發。
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
 <!-- Regenerate: bun run gen:skill-docs -->
-> **Safety Advisory:** This skill includes safety checks that check bash commands for destructive operations (rm -rf, DROP TABLE, force-push, git reset --hard, etc.) before execution, and verify file edits are within the allowed scope boundary before applying, and verify file writes are within the allowed scope boundary before applying. When using this skill, always pause and verify before executing potentially destructive operations. If uncertain about a command's safety, ask the user for confirmation before proceeding.
+> **安全提示：** 本 skill 包含安全檢查，會在執行前掃描 bash 指令中的破壞性操作（rm -rf、DROP TABLE、force-push、git reset --hard 等），並在套用前驗證檔案編輯是否在允許的範圍邊界內，以及驗證檔案寫入是否在允許的範圍邊界內。使用本 skill 時，執行可能有破壞性的操作前請暫停確認。若不確定某個指令是否安全，請先向用戶確認再繼續。
 
 
-# /guard — Full Safety Mode
+# /guard — 完整安全模式
 
-Activates both destructive command warnings and directory-scoped edit restrictions.
-This is the combination of `/careful` + `/freeze` in a single command.
+同時啟動破壞性指令警告與目錄範圍編輯限制。
+這是將 `/careful` + `/freeze` 合併成單一指令執行。
 
-**Dependency note:** This skill references hook scripts from the sibling `/careful`
-and `/freeze` skill directories. Both must be installed (they are installed together
-by the gstack setup script).
+**相依性說明：** 本 skill 參照同層級 `/careful` 和 `/freeze` skill 目錄中的 hook 腳本。兩者都必須已安裝（gstack 安裝腳本會一併安裝）。
 
 ```bash
 mkdir -p ~/.gstack/analytics
 ```
 
-## Setup
+## 設定
 
-Ask the user which directory to restrict edits to. Use AskUserQuestion:
+詢問用戶要將編輯限制在哪個目錄。使用 AskUserQuestion：
 
-- Question: "Guard mode: which directory should edits be restricted to? Destructive command warnings are always on. Files outside the chosen path will be blocked from editing."
-- Text input (not multiple choice) — the user types a path.
+- 問題：「Guard 模式：編輯應限制在哪個目錄？破壞性指令警告會一律啟用。選定路徑以外的檔案將禁止編輯。」
+- 文字輸入（非多選）——用戶自行輸入路徑。
 
-Once the user provides a directory path:
+用戶提供目錄路徑後：
 
-1. Resolve it to an absolute path:
+1. 解析為絕對路徑：
 ```bash
 FREEZE_DIR=$(cd "<user-provided-path>" 2>/dev/null && pwd)
 echo "$FREEZE_DIR"
 ```
 
-2. Ensure trailing slash and save to the freeze state file:
+2. 確保結尾有斜線並儲存至 freeze state 檔案：
 ```bash
 FREEZE_DIR="${FREEZE_DIR%/}/"
 STATE_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.gstack}"
@@ -49,13 +45,13 @@ echo "$FREEZE_DIR" > "$STATE_DIR/freeze-dir.txt"
 echo "Freeze boundary set: $FREEZE_DIR"
 ```
 
-Tell the user:
-- "**Guard mode active.** Two protections are now running:"
-- "1. **Destructive command warnings** — rm -rf, DROP TABLE, force-push, etc. will warn before executing (you can override)"
-- "2. **Edit boundary** — file edits restricted to `<path>/`. Edits outside this directory are blocked."
-- "To remove the edit boundary, run `/unfreeze`. To deactivate everything, end the session."
+告知用戶：
+- 「**Guard 模式已啟動。** 目前有兩道防護正在運作：」
+- 「1. **破壞性指令警告** — rm -rf、DROP TABLE、force-push 等執行前會發出警告（可覆蓋）」
+- 「2. **編輯邊界** — 檔案編輯限制在 `<path>/`。此目錄以外的編輯將被封鎖。」
+- 「若要移除編輯邊界，執行 `/unfreeze`。若要停用所有防護，結束 session 即可。」
 
-## What's protected
+## 受保護的操作
 
-See `/careful` for the full list of destructive command patterns and safe exceptions.
-See `/freeze` for how edit boundary enforcement works.
+破壞性指令模式完整清單及安全例外請參閱 `/careful`。
+編輯邊界的執行方式請參閱 `/freeze`。

@@ -1,0 +1,216 @@
+---
+name: ship
+description: |
+  完整發布工作流：偵測並合併 base branch → 跑測試 → 審查 diff → 更新 VERSION →
+  更新 CHANGELOG → commit → push → 建立 PR。
+  說「ship」、「發布」、「建立 PR」、「推到 main」、「部署」時觸發。
+  Use when asked to "ship", "deploy", "push to main", "create a PR", "merge and push",
+  or "get it deployed". (gstack)
+---
+<!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
+<!-- Regenerate: bun run gen:skill-docs -->
+
+## Preamble (run first)
+
+```bash
+_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+GSTACK_ROOT="$HOME/.gemini/skills/gstack"
+[ -n "$_ROOT" ] && [ -d "$_ROOT/.gemini/skills/gstack" ] && GSTACK_ROOT="$_ROOT/.gemini/skills/gstack"
+GSTACK_BIN="$GSTACK_ROOT/bin"
+GSTACK_BROWSE="$GSTACK_ROOT/browse/dist"
+GSTACK_DESIGN="$GSTACK_ROOT/design/dist"
+_UPD=$($GSTACK_BIN/gstack-update-check 2>/dev/null || .gemini/skills/gstack/bin/gstack-update-check 2>/dev/null || true)
+[ -n "$_UPD" ] && echo "$_UPD" || true
+mkdir -p ~/.gstack/sessions
+touch ~/.gstack/sessions/"$PPID"
+_SESSIONS=$(find ~/.gstack/sessions -mmin -120 -type f 2>/dev/null | wc -l | tr -d ' ')
+find ~/.gstack/sessions -mmin +120 -type f -exec rm {} + 2>/dev/null || true
+_PROACTIVE=$($GSTACK_BIN/gstack-config get proactive 2>/dev/null || echo "true")
+_PROACTIVE_PROMPTED=$([ -f ~/.gstack/.proactive-prompted ] && echo "yes" || echo "no")
+_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+echo "BRANCH: $_BRANCH"
+_SKILL_PREFIX=$($GSTACK_BIN/gstack-config get skill_prefix 2>/dev/null || echo "false")
+echo "PROACTIVE: $_PROACTIVE"
+echo "PROACTIVE_PROMPTED: $_PROACTIVE_PROMPTED"
+echo "SKILL_PREFIX: $_SKILL_PREFIX"
+source <($GSTACK_BIN/gstack-repo-mode 2>/dev/null) || true
+REPO_MODE=${REPO_MODE:-unknown}
+echo "REPO_MODE: $REPO_MODE"
+_LAKE_SEEN=$([ -f ~/.gstack/.completeness-intro-seen ] && echo "yes" || echo "no")
+echo "LAKE_INTRO: $_LAKE_SEEN"
+_SESSION_ID="$$-$(date +%s)"
+# Learnings count
+eval "$($GSTACK_BIN/gstack-slug 2>/dev/null)" 2>/dev/null || true
+_LEARN_FILE="${GSTACK_HOME:-$HOME/.gstack}/projects/${SLUG:-unknown}/learnings.jsonl"
+if [ -f "$_LEARN_FILE" ]; then
+  _LEARN_COUNT=$(wc -l < "$_LEARN_FILE" 2>/dev/null | tr -d ' ')
+  echo "LEARNINGS: $_LEARN_COUNT entries loaded"
+  if [ "$_LEARN_COUNT" -gt 5 ] 2>/dev/null; then
+    $GSTACK_BIN/gstack-learnings-search --limit 3 2>/dev/null || true
+  fi
+else
+  echo "LEARNINGS: 0"
+fi
+# Session timeline: record skill start (local-only, never sent anywhere)
+$GSTACK_BIN/gstack-timeline-log '{"skill":"ship","event":"started","branch":"'"$_BRANCH"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null &
+# Check if CLAUDE.md has routing rules
+_HAS_ROUTING="no"
+if [ -f CLAUDE.md ] && grep -q "## Skill routing" CLAUDE.md 2>/dev/null; then
+  _HAS_ROUTING="yes"
+fi
+_ROUTING_DECLINED=$($GSTACK_BIN/gstack-config get routing_declined 2>/dev/null || echo "false")
+echo "HAS_ROUTING: $_HAS_ROUTING"
+echo "ROUTING_DECLINED: $_ROUTING_DECLINED"
+# Vendoring deprecation: detect if CWD has a vendored gstack copy
+_VENDORED="no"
+if [ -d ".gemini/skills/gstack" ] && [ ! -L ".gemini/skills/gstack" ]; then
+  if [ -f ".gemini/skills/gstack/VERSION" ] || [ -d ".gemini/skills/gstack/.git" ]; then
+    _VENDORED="yes"
+  fi
+fi
+echo "VENDORED_GSTACK: $_VENDORED"
+# Detect spawned session (OpenClaw or other orchestrator)
+[ -n "$OPENCLAW_SESSION" ] && echo "SPAWNED_SESSION: true" || true
+```
+如果 `PROACTIVE` 為 `"false"`，請不要主動建議 gstack skills，也不要根據對話內容自動呼叫 skills。只執行使用者明確輸入的 skills（例如 /qa、/ship）。如果你原本會自動呼叫某個 skill，改為簡短地說：「我認為 /skillname 可能有幫助 — 要我執行它嗎？」然後等待確認。使用者選擇不使用主動行為。
+
+如果 `SKILL_PREFIX` 為 `"true"`，使用者已為 skill 名稱加上命名空間。當建議或呼叫其他 gstack skills 時，請使用 `/gstack-` 前綴（例如 `/gstack-qa` 而非 `/qa`、`/gstack-ship` 而非 `/ship`）。磁碟路徑不受影響 — 讀取 skill 檔案時始終使用 `$GSTACK_ROOT/[skill-name]/SKILL.md`。
+
+如果輸出顯示 `UPGRADE_AVAILABLE <old> <new>`：讀取 `$GSTACK_ROOT/gstack-upgrade/SKILL.md` 並遵循「Inline upgrade flow」（如已設定則自動升級，否則使用 AskUserQuestion 提供 4 個選項，若被拒絕則寫入延遲狀態）。如果顯示 `JUST_UPGRADED <from> <to>`：告訴使用者「Running gstack v{to} (just updated!)」並繼續。
+
+如果 `LAKE_INTRO` 為 `no`：在繼續之前，先介紹完整性原則。
+告訴使用者：「gstack 遵循 **Boil the Lake** 原則 — 當 AI 使邊際成本接近零時，總是做完整的事情。了解更多：https://garryslist.org/posts/boil-the-ocean」
+然後詢問是否在預設瀏覽器中開啟該文章：
+
+
+```bash
+open https://garryslist.org/posts/boil-the-ocean
+touch ~/.gstack/.completeness-intro-seen
+
+只有在使用者同意時才執行 `open`。始終執行 `touch` 以標記為已看過。這只會發生一次。
+
+
+如果 `PROACTIVE_PROMPTED` 為 `no`：
+詢問使用者關於主動行為的偏好。使用 AskUserQuestion：
+
+> gstack 可以在你工作時主動判斷何時可能需要某個 skill —
+> 例如當你說「這能用嗎？」時建議 /qa，或當你遇到 bug 時建議 /investigate。
+> 我們建議保持此功能開啟 — 它能加速你工作流程的每個部分。
+
+選項：
+- A) 保持開啟（建議）
+- B) 關閉 — 我會自己輸入 /commands
+
+如果選 A：執行 `$GSTACK_BIN/gstack-config set proactive true`
+如果選 B：執行 `$GSTACK_BIN/gstack-config set proactive false`
+
+始終執行：
+Always run:
+```bash
+touch ~/.gstack/.proactive-prompted
+
+
+如果 `HAS_ROUTING` 為 `yes` 且 `ROUTING_DECLINED` 為 `false`：使用者在 CLAUDE.md 中定義了 skill routing 規則。每個任務開始時：
+
+1. 讀取並解析 CLAUDE.md 中的 `## Skill routing` 區段
+2. 根據使用者的請求，評估是否有任何規則匹配
+3. 如果有規則匹配：
+   - 按照規則中指定的方式處理任務（可能是呼叫不同的 skill、使用特定工具或遵循特定工作流程）
+   - 在回應中簡要說明你正在遵循他們的 routing 規則
+4. 如果沒有規則匹配：照常繼續
+
+Skill routing 讓使用者可以自訂 gstack 如何處理不同類型的任務。始終尊重這些規則 — 它們是使用者對如何完成工作的明確偏好。
+
+如果 `ROUTING_DECLINED` 為 `true`，使用者已明確選擇不使用 skill routing，即使 CLAUDE.md 中有規則也不要提及或遵循這些規則。
+
+## Skill routing
+
+如果 `HAS_ROUTING` 為 `no` 且 `ROUTING_DECLINED` 為 `false`：
+
+告訴使用者：
+
+> gstack 現在支援 **skill routing** — 你可以在 CLAUDE.md 中定義規則，自訂我如何處理不同類型的任務。例如：
+>
+> - 將特定檔案或資料夾的變更路由到特定 skill
+> - 根據關鍵字選擇不同的工作流程
+> - 跳過你不需要的步驟
+> - 定義自訂的 CI/CD pipeline
+>
+> 範例規則：
+>
+> ```markdown
+> ## Skill routing
+>
+> 當使用者說「快速發布」：跳過 /qa 直接執行 /ship
+>
+> 當變更只涉及 docs/ 資料夾：跳過測試，僅更新 CHANGELOG
+>
+> 當使用者說「完整檢查」：按順序執行 /qa → /ship → /deploy
+> ```
+>
+> 要開始使用，我可以在你的 CLAUDE.md 中加入一個 `## Skill routing` 區段，內含範例規則。
+
+使用 AskUserQuestion：
+
+選項：
+- A) 是 — 在 CLAUDE.md 中加入範例 routing 規則
+- B) 否 — 我之後自己加
+- C) 不要再問我關於 routing 的事
+
+如果選 A：
+
+1. 檢查 CLAUDE.md 是否存在。如果不存在，建立包含標準 gstack 前言的檔案。
+2. 在 CLAUDE.md 的結尾加入：
+
+
+If `VENDORED_GSTACK` is `yes`: This project has a vendored copy of gstack at
+`.gemini/skills/gstack/`. Vendoring is deprecated. We will not keep vendored copies
+up to date, so this project's gstack will fall behind.
+
+Use AskUserQuestion (one-time per project, check for `~/.gstack/.vendoring-warned-$SLUG` marker):
+
+> This project has gstack vendored in `.gemini/skills/gstack/`. Vendoring is deprecated.
+> We won't keep this copy up to date, so you'll fall behind on new features and fixes.
+>
+> Want to migrate to team mode? It takes about 30 seconds.
+
+Options:
+- A) Yes, migrate to team mode now
+- B) No, I'll handle it myself
+
+If A:
+1. Run `git rm -r .gemini/skills/gstack/`
+2. Run `echo '.gemini/skills/gstack/' >> .gitignore`
+3. Run `$GSTACK_BIN/gstack-team-init required` (or `optional`)
+4. Run `git add .claude/ .gitignore CLAUDE.md && git commit -m "chore: migrate gstack from vendored to team mode"`
+5. Tell the user: "Done. Each developer now runs: `cd $GSTACK_ROOT && ./setup --team`"
+
+If B: say "OK, you're on your own to keep the vendored copy up to date."
+
+Always run (regardless of choice):
+
+
+3. 告訴使用者：「已加入範例 routing 規則到 CLAUDE.md。你可以編輯這些規則或加入更多規則 — 我會在每個任務開始時讀取它們。」
+
+如果選 B：告訴使用者：「好的！如果你想稍後設定 skill routing，只需在 CLAUDE.md 中加入一個 `## Skill routing` 區段。」
+
+如果選 C：
+1. 執行：`$GSTACK_BIN/gstack-config set routing_declined true`
+2. 告訴使用者：「了解 — 我不會再提及 skill routing。」
+
+**Routing 規則格式**：
+
+CLAUDE.md 中的 Routing 規則應該是簡單的自然語言描述，以「當...」或「如果...」開頭：
+
+```markdown
+## Skill routing
+
+當使用者說「快速修復」：跳過測試，直接 commit 並 push
+
+當只有 README.md 變更時：跳過所有檢查，直接建立 PR
+
+如果使用者提到「緊急」：跳過 review，直接 merge
+```
+
+你讀取這些規則並在每個任務開始時解釋它們。規則不需要精確的語法 — 使用常識來匹配意圖。
+

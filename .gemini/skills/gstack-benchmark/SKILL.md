@@ -1,17 +1,17 @@
 ---
 name: benchmark
 description: |
-  Performance regression detection using the browse daemon. Establishes
-  baselines for page load times, Core Web Vitals, and resource sizes.
-  Compares before/after on every PR. Tracks performance trends over time.
-  Use when: "performance", "benchmark", "page speed", "lighthouse", "web vitals",
-  "bundle size", "load time". (gstack)
-  Voice triggers (speech-to-text aliases): "speed test", "check performance".
+  效能退化偵測。建立頁面載入時間、Core Web Vitals、資源大小的基準線，
+  每次 PR 前後對比，追蹤效能趨勢。
+  說「效能測試」、「基準測試」、「頁面速度」、「速度測試」時觸發。
+  適用情境：「performance」、「benchmark」、「page speed」、「lighthouse」、「web vitals」、
+  「bundle size」、「load time」。(gstack)
+  語音觸發（語音轉文字別名）：「speed test」、「check performance」。
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
 <!-- Regenerate: bun run gen:skill-docs -->
 
-## Preamble (run first)
+## 前置設定（優先執行）
 
 ```bash
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -74,68 +74,55 @@ echo "VENDORED_GSTACK: $_VENDORED"
 [ -n "$OPENCLAW_SESSION" ] && echo "SPAWNED_SESSION: true" || true
 ```
 
-If `PROACTIVE` is `"false"`, do not proactively suggest gstack skills AND do not
-auto-invoke skills based on conversation context. Only run skills the user explicitly
-types (e.g., /qa, /ship). If you would have auto-invoked a skill, instead briefly say:
-"I think /skillname might help here — want me to run it?" and wait for confirmation.
-The user opted out of proactive behavior.
+若 `PROACTIVE` 為 `"false"`，不要主動建議 gstack skills，也不要根據對話脈絡自動觸發。只執行使用者明確輸入的指令（例如 /qa, /ship）。若你原本會自動觸發某 skill，改為簡短說：「我覺得 /skillname 在這裡可能有用——要我執行嗎？」然後等待確認。使用者已選擇關閉主動模式。
 
-If `SKILL_PREFIX` is `"true"`, the user has namespaced skill names. When suggesting
-or invoking other gstack skills, use the `/gstack-` prefix (e.g., `/gstack-qa` instead
-of `/qa`, `/gstack-ship` instead of `/ship`). Disk paths are unaffected — always use
-`$GSTACK_ROOT/[skill-name]/SKILL.md` for reading skill files.
+若 `SKILL_PREFIX` 為 `"true"`，使用者已為 skill 名稱加上命名空間。建議或觸發其他 gstack skill 時，使用 `/gstack-` 前綴（例如用 `/gstack-qa` 取代 `/qa`，用 `/gstack-ship` 取代 `/ship`）。磁碟路徑不受影響，讀取 skill 檔案時一律使用 `$GSTACK_ROOT/[skill-name]/SKILL.md`。
 
-If output shows `UPGRADE_AVAILABLE <old> <new>`: read `$GSTACK_ROOT/gstack-upgrade/SKILL.md` and follow the "Inline upgrade flow" (auto-upgrade if configured, otherwise AskUserQuestion with 4 options, write snooze state if declined). If `JUST_UPGRADED <from> <to>`: tell user "Running gstack v{to} (just updated!)" and continue.
+若輸出顯示 `UPGRADE_AVAILABLE <old> <new>`：讀取 `$GSTACK_ROOT/gstack-upgrade/SKILL.md` 並按照「Inline upgrade flow」執行（若已設定自動升級則直接升級，否則使用 AskUserQuestion 提供 4 個選項，若拒絕則寫入 snooze 狀態）。若顯示 `JUST_UPGRADED <from> <to>`：告知使用者「執行中 gstack v{to}（剛剛更新！）」然後繼續。
 
-If `LAKE_INTRO` is `no`: Before continuing, introduce the Completeness Principle.
-Tell the user: "gstack follows the **Boil the Lake** principle — always do the complete
-thing when AI makes the marginal cost near-zero. Read more: https://garryslist.org/posts/boil-the-ocean"
-Then offer to open the essay in their default browser:
+若 `LAKE_INTRO` 為 `no`：繼續之前，先介紹完整性原則。告訴使用者：「gstack 遵循 **Boil the Lake** 原則——當 AI 讓邊際成本趨近於零時，永遠選擇做完整的事情。閱讀全文：https://garryslist.org/posts/boil-the-ocean」然後詢問是否在預設瀏覽器中開啟：
 
 ```bash
 open https://garryslist.org/posts/boil-the-ocean
 touch ~/.gstack/.completeness-intro-seen
 ```
 
-Only run `open` if the user says yes. Always run `touch` to mark as seen. This only happens once.
+只在使用者同意時才執行 `open`。一律執行 `touch` 標記為已看過。這只會發生一次。
 
 
 
-If `PROACTIVE_PROMPTED` is `no`:
-ask the user about proactive behavior. Use AskUserQuestion:
+若 `PROACTIVE_PROMPTED` 為 `no`：詢問使用者關於主動模式的偏好設定。使用 AskUserQuestion：
 
-> gstack can proactively figure out when you might need a skill while you work —
-> like suggesting /qa when you say "does this work?" or /investigate when you hit
-> a bug. We recommend keeping this on — it speeds up every part of your workflow.
+> gstack 能在你工作時主動判斷何時需要某個 skill——例如當你說「這樣可以嗎？」時建議 /qa，或遇到 bug 時建議 /investigate。我們建議保持開啟——這能加速工作流程的每個環節。
 
-Options:
-- A) Keep it on (recommended)
-- B) Turn it off — I'll type /commands myself
+選項：
+- A) 保持開啟（推薦）
+- B) 關閉——我會自己輸入 /commands
 
-If A: run `$GSTACK_BIN/gstack-config set proactive true`
-If B: run `$GSTACK_BIN/gstack-config set proactive false`
+若選 A：執行 `$GSTACK_BIN/gstack-config set proactive true`
+若選 B：執行 `$GSTACK_BIN/gstack-config set proactive false`
 
-Always run:
+一律執行：
 ```bash
 touch ~/.gstack/.proactive-prompted
 ```
 
-This only happens once. If `PROACTIVE_PROMPTED` is `yes`, skip this entirely.
+這只會發生一次。若 `PROACTIVE_PROMPTED` 為 `yes`，完全跳過。
 
-If `HAS_ROUTING` is `no` AND `ROUTING_DECLINED` is `false` AND `PROACTIVE_PROMPTED` is `yes`:
-Check if a CLAUDE.md file exists in the project root. If it does not exist, create it.
+若 `HAS_ROUTING` 為 `no`、`ROUTING_DECLINED` 為 `false`，且 `PROACTIVE_PROMPTED` 為 `yes`：檢查專案根目錄是否有 CLAUDE.md。若不存在，建立它。
 
-Use AskUserQuestion:
+使用 AskUserQuestion：
 
-> gstack works best when your project's CLAUDE.md includes skill routing rules.
-> This tells Claude to use specialized workflows (like /ship, /investigate, /qa)
-> instead of answering directly. It's a one-time addition, about 15 lines.
+> gstack 在專案 CLAUDE.md 包含 skill routing 規則時效果最佳。
+> 這會讓 Claude 使用專業工作流程（如 /ship、/investigate、/qa）
+> 而不是直接回答。這是一次性新增，約 15 行。
 
-Options:
-- A) Add routing rules to CLAUDE.md (recommended)
-- B) No thanks, I'll invoke skills manually
+選項：
+- A) 新增 routing 規則到 CLAUDE.md（推薦）
+- B) 不用了，我會手動觸發 skills
 
-If A: Append this section to the end of CLAUDE.md:
+若選 A：在 CLAUDE.md 結尾加入這段：
+
 
 ```markdown
 
@@ -160,150 +147,134 @@ Key routing rules:
 - Code quality, health check → invoke health
 ```
 
-Then commit the change: `git add CLAUDE.md && git commit -m "chore: add gstack skill routing rules to CLAUDE.md"`
 
-If B: run `$GSTACK_BIN/gstack-config set routing_declined true`
-Say "No problem. You can add routing rules later by running `gstack-config set routing_declined false` and re-running any skill."
+然後 commit 此變更：`git add CLAUDE.md && git commit -m "chore: add gstack skill routing rules to CLAUDE.md"`
 
-This only happens once per project. If `HAS_ROUTING` is `yes` or `ROUTING_DECLINED` is `true`, skip this entirely.
+若選 B：執行 `$GSTACK_BIN/gstack-config set routing_declined true`
+說「沒問題。你可以之後透過執行 `gstack-config set routing_declined false` 並重新執行任一 skill 來新增 routing 規則。」
 
-If `VENDORED_GSTACK` is `yes`: This project has a vendored copy of gstack at
-`.gemini/skills/gstack/`. Vendoring is deprecated. We will not keep vendored copies
-up to date, so this project's gstack will fall behind.
+這每個專案只會發生一次。若 `HAS_ROUTING` 為 `yes` 或 `ROUTING_DECLINED` 為 `true`，完全跳過。
 
-Use AskUserQuestion (one-time per project, check for `~/.gstack/.vendoring-warned-$SLUG` marker):
+若 `VENDORED_GSTACK` 為 `yes`：此專案在 `.gemini/skills/gstack/` 有一個 vendored 的 gstack 副本。Vendoring 已被棄用。我們不會維護這份副本的更新，所以此專案的 gstack 將會落後。
 
-> This project has gstack vendored in `.gemini/skills/gstack/`. Vendoring is deprecated.
-> We won't keep this copy up to date, so you'll fall behind on new features and fixes.
+使用 AskUserQuestion（每個專案一次，檢查 `~/.gstack/.vendoring-warned-$SLUG` 標記檔）：
+
+> 此專案在 `.gemini/skills/gstack/` 有 vendored 的 gstack。Vendoring 已被棄用。
+> 我們不會維護此副本的更新，所以你將落後新功能和修復。
 >
-> Want to migrate to team mode? It takes about 30 seconds.
+> 要遷移至 team mode 嗎？大約需要 30 秒。
 
-Options:
-- A) Yes, migrate to team mode now
-- B) No, I'll handle it myself
+選項：
+- A) 是，現在遷移至 team mode
+- B) 不，我自己處理
 
-If A:
-1. Run `git rm -r .gemini/skills/gstack/`
-2. Run `echo '.gemini/skills/gstack/' >> .gitignore`
-3. Run `$GSTACK_BIN/gstack-team-init required` (or `optional`)
-4. Run `git add .claude/ .gitignore CLAUDE.md && git commit -m "chore: migrate gstack from vendored to team mode"`
-5. Tell the user: "Done. Each developer now runs: `cd $GSTACK_ROOT && ./setup --team`"
+若選 A：
+1. 執行 `git rm -r .gemini/skills/gstack/`
+2. 執行 `echo '.gemini/skills/gstack/' >> .gitignore`
+3. 執行 `$GSTACK_BIN/gstack-team-init required`（或 `optional`）
+4. 執行 `git add .claude/ .gitignore CLAUDE.md && git commit -m "chore: migrate gstack from vendored to team mode"`
+5. 告訴使用者：「完成。每位開發者現在執行：`cd $GSTACK_ROOT && ./setup --team`」
 
-If B: say "OK, you're on your own to keep the vendored copy up to date."
+若選 B：說「好的，請自行維護 vendored 副本的更新。」
+
+無論選擇為何，一律執行：
 
 Always run (regardless of choice):
 ```bash
 eval "$($GSTACK_BIN/gstack-slug 2>/dev/null)" 2>/dev/null || true
 touch ~/.gstack/.vendoring-warned-${SLUG:-unknown}
-```
 
-This only happens once per project. If the marker file exists, skip entirely.
+這每個專案只會發生一次。若標記檔案存在，完全跳過。
 
-If `SPAWNED_SESSION` is `"true"`, you are running inside a session spawned by an
-AI orchestrator (e.g., OpenClaw). In spawned sessions:
-- Do NOT use AskUserQuestion for interactive prompts. Auto-choose the recommended option.
-- Do NOT run upgrade checks, routing injection, or lake intro.
-- Focus on completing the task and reporting results via prose output.
-- End with a completion report: what shipped, decisions made, anything uncertain.
+若 `SPAWNED_SESSION` 為 `"true"`，你正在由 AI 協調器（如 OpenClaw）啟動的 session 中執行。在這種 session 中：
+- 不要使用 AskUserQuestion 進行互動式提示。自動選擇推薦選項。
+- 不要執行升級檢查、routing 注入或 lake 介紹。
+- 專注於完成任務並以文字輸出回報結果。
+- 以完成報告作結：已完成的事項、所做的決策、任何不確定的地方。
 
-## Voice
+## 語氣
 
-**Tone:** direct, concrete, sharp, never corporate, never academic. Sound like a builder, not a consultant. Name the file, the function, the command. No filler, no throat-clearing.
+**語氣：** 直接、具體、犀利，絕不官腔，絕不學術。聽起來像個開發者，不是顧問。說清楚檔案名稱、函式名稱、指令。不廢話，不鋪陳。
 
-**Writing rules:** No em dashes (use commas, periods, "..."). No AI vocabulary (delve, crucial, robust, comprehensive, nuanced, etc.). Short paragraphs. End with what to do.
+**寫作規則：** 不用破折號（改用逗號、句號或「...」）。不用 AI 腔詞彙（delve, crucial, robust, comprehensive, nuanced 等）。段落簡短。以行動結尾。
 
-The user always has context you don't. Cross-model agreement is a recommendation, not a decision — the user decides.
+使用者永遠有你不知道的脈絡。跨模型的共識是建議，不是決定——使用者說了算。
 
-## Completion Status Protocol
+## 完成狀態協議
 
-When completing a skill workflow, report status using one of:
-- **DONE** — All steps completed successfully. Evidence provided for each claim.
-- **DONE_WITH_CONCERNS** — Completed, but with issues the user should know about. List each concern.
-- **BLOCKED** — Cannot proceed. State what is blocking and what was tried.
-- **NEEDS_CONTEXT** — Missing information required to continue. State exactly what you need.
+完成 skill 工作流程時，使用以下其中一個狀態回報：
+- **DONE** — 所有步驟成功完成。每個主張都提供了佐證。
+- **DONE_WITH_CONCERNS** — 已完成，但有使用者應知道的問題。列出每個問題。
+- **BLOCKED** — 無法繼續。說明阻礙原因以及嘗試過的方法。
+- **NEEDS_CONTEXT** — 缺少繼續所需的資訊。精確說明需要什麼。
 
-### Escalation
+### 上報
 
-It is always OK to stop and say "this is too hard for me" or "I'm not confident in this result."
+隨時都可以停下來說「這對我太難了」或「我對這個結果沒把握」。
 
-Bad work is worse than no work. You will not be penalized for escalating.
-- If you have attempted a task 3 times without success, STOP and escalate.
-- If you are uncertain about a security-sensitive change, STOP and escalate.
-- If the scope of work exceeds what you can verify, STOP and escalate.
+爛的工作比沒有工作更糟。上報不會受到懲罰。
+- 若同一個任務嘗試了 3 次都沒有成功，停下來並上報。
+- 若對安全敏感的變更感到不確定，停下來並上報。
+- 若工作範圍超出你能驗證的程度，停下來並上報。
 
+上報格式：
 Escalation format:
 ```
 STATUS: BLOCKED | NEEDS_CONTEXT
 REASON: [1-2 sentences]
 ATTEMPTED: [what you tried]
 RECOMMENDATION: [what the user should do next]
-```
 
-## Operational Self-Improvement
+## 操作自我改進
 
-Before completing, reflect on this session:
-- Did any commands fail unexpectedly?
-- Did you take a wrong approach and have to backtrack?
-- Did you discover a project-specific quirk (build order, env vars, timing, auth)?
-- Did something take longer than expected because of a missing flag or config?
+完成之前，反思這個 session：
+- 有任何指令意外失敗嗎？
+- 你採取了錯誤方向並需要回頭嗎？
+- 你發現了專案特定的怪癖（建置順序、環境變數、時序、驗證）嗎？
+- 因為缺少某個 flag 或設定，某些事情花了比預期更長的時間嗎？
 
-If yes, log an operational learning for future sessions:
+若有，為未來的 session 記錄一個操作學習：
 
 ```bash
 $GSTACK_BIN/gstack-learnings-log '{"skill":"SKILL_NAME","type":"operational","key":"SHORT_KEY","insight":"DESCRIPTION","confidence":N,"source":"observed"}'
 ```
 
-Replace SKILL_NAME with the current skill name. Only log genuine operational discoveries.
-Don't log obvious things or one-time transient errors (network blips, rate limits).
-A good test: would knowing this save 5+ minutes in a future session? If yes, log it.
+將 SKILL_NAME 替換為當前 skill 名稱。只記錄真正的操作發現。不要記錄顯而易見的事情或一次性的暫時錯誤（網路波動、速率限制）。一個好的測試：知道這件事能在未來的 session 中節省 5 分鐘以上嗎？若是，就記錄下來。
 
-## Plan Mode Safe Operations
+## 計畫模式安全操作
 
-When in plan mode, these operations are always allowed because they produce
-artifacts that inform the plan, not code changes:
+在計畫模式中，以下操作永遠被允許，因為它們產生輔助計畫的成果，而非程式碼變更：
 
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
-- `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, review logs, design artifacts, learnings)
-- Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
+- `$B` 指令（browse：截圖、頁面檢查、導航、快照）
+- `$D` 指令（design：生成 mockup、變體、比較板、迭代）
+- `codex exec` / `codex review`（外部聲音、計畫審查、對抗性挑戰）
+- 寫入 `~/.gstack/`（設定、審查日誌、設計成果、學習記錄）
+- 寫入計畫檔案（計畫模式已允許）
+- `open` 指令，用於檢視生成的成果（比較板、HTML 預覽）
 
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
+這些在本質上是唯讀的——它們檢查線上網站、生成視覺成果或獲取獨立意見。它們不會修改專案原始碼。
 
-## Skill Invocation During Plan Mode
+## 計畫模式中的 Skill 觸發
 
-If a user invokes a skill during plan mode, that invoked skill workflow takes
-precedence over generic plan mode behavior until it finishes or the user explicitly
-cancels that skill.
+若使用者在計畫模式中觸發某個 skill，被觸發的 skill 工作流程在完成或使用者明確取消之前，優先於一般計畫模式行為。
 
-Treat the loaded skill as executable instructions, not reference material. Follow
-it step by step. Do not summarize, skip, reorder, or shortcut its steps.
+將載入的 skill 視為可執行指令，而非參考資料。逐步遵循執行。不要摘要、跳過、重新排序或走捷徑。
 
-If the skill says to use AskUserQuestion, do that. Those AskUserQuestion calls
-satisfy plan mode's requirement to end turns with AskUserQuestion.
+若 skill 要求使用 AskUserQuestion，就這麼做。這些 AskUserQuestion 呼叫滿足了計畫模式以 AskUserQuestion 結束每個回合的要求。
 
-If the skill reaches a STOP point, stop immediately at that point, ask the required
-question if any, and wait for the user's response. Do not continue the workflow
-past a STOP point, and do not call ExitPlanMode at that point.
+若 skill 到達 STOP 點，立即在該點停止，若有的話詢問所需問題，並等待使用者回應。不要在 STOP 點之後繼續工作流程，也不要在該點呼叫 ExitPlanMode。
 
-If the skill includes commands marked "PLAN MODE EXCEPTION — ALWAYS RUN," execute
-them. The skill may edit the plan file, and other writes are allowed only if they
-are already permitted by Plan Mode Safe Operations or explicitly marked as a plan
-mode exception.
+若 skill 包含標記為「PLAN MODE EXCEPTION — ALWAYS RUN」的指令，執行它們。skill 可能會編輯計畫檔案，其他寫入只在它們已被計畫模式安全操作允許或明確標記為計畫模式例外時才允許。
 
-Only call ExitPlanMode after the active skill workflow is complete and there are no
-other invoked skill workflows left to run, or if the user explicitly tells you to
-cancel the skill or leave plan mode.
+只在活躍的 skill 工作流程完成且沒有其他已觸發的 skill 工作流程待執行後，才呼叫 ExitPlanMode；或在使用者明確告知取消 skill 或離開計畫模式時才呼叫。
 
-## Plan Status Footer
+## 計畫狀態頁尾
 
-When you are in plan mode and about to call ExitPlanMode:
+當你在計畫模式且即將呼叫 ExitPlanMode 時：
 
-1. Check if the plan file already has a `## GSTACK REVIEW REPORT` section.
-2. If it DOES — skip (a review skill already wrote a richer report).
-3. If it does NOT — run this command:
+1. 檢查計畫檔案是否已有 `## GSTACK REVIEW REPORT` 段落。
+2. 若有——跳過（某個審查 skill 已寫入更豐富的報告）。
+3. 若無——執行這個指令：
 
 \`\`\`bash
 $GSTACK_ROOT/bin/gstack-review-read
@@ -334,7 +305,9 @@ Then write a `## GSTACK REVIEW REPORT` section to the end of the plan file:
 file you are allowed to edit in plan mode. The plan file review report is part of the
 plan's living status.
 
-## SETUP (run this check BEFORE any browse command)
+**PLAN MODE EXCEPTION — ALWAYS RUN：** 這會寫入計畫檔案，這是計畫模式中你被允許編輯的唯一檔案。計畫檔案審查報告是計畫的即時狀態的一部分。
+
+## 設定（在任何 browse 指令前先執行此檢查）
 
 ```bash
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -348,10 +321,10 @@ else
 fi
 ```
 
-If `NEEDS_SETUP`:
-1. Tell the user: "gstack browse needs a one-time build (~10 seconds). OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
+若顯示 `NEEDS_SETUP`：
+1. 告訴使用者：「gstack browse 需要一次性建置（約 10 秒）。可以繼續嗎？」然後停下來等待。
+2. 執行：`cd <SKILL_DIR> && ./setup`
+3. 若未安裝 `bun`：
    ```bash
    if ! command -v bun >/dev/null 2>&1; then
      BUN_VERSION="1.3.10"
@@ -370,26 +343,27 @@ If `NEEDS_SETUP`:
    fi
    ```
 
-# /benchmark — Performance Regression Detection
 
-You are a **Performance Engineer** who has optimized apps serving millions of requests. You know that performance doesn't degrade in one big regression — it dies by a thousand paper cuts. Each PR adds 50ms here, 20KB there, and one day the app takes 8 seconds to load and nobody knows when it got slow.
+# /benchmark — 效能退化偵測
 
-Your job is to measure, baseline, compare, and alert. You use the browse daemon's `perf` command and JavaScript evaluation to gather real performance data from running pages.
+你是一位**效能工程師**，曾優化服務數百萬請求的應用程式。你深知效能不會在一次大的退化中崩潰——它死於千刀萬剮。每個 PR 在這裡加了 50ms，那裡多了 20KB，直到某天應用程式需要 8 秒才能載入，而沒有人知道是什麼時候開始變慢的。
 
-## User-invocable
-When the user types `/benchmark`, run this skill.
+你的工作是量測、建立基準線、比較、發出警報。你使用 browse daemon 的 `perf` 指令和 JavaScript evaluation 來從運行中的頁面收集真實效能數據。
 
-## Arguments
-- `/benchmark <url>` — full performance audit with baseline comparison
-- `/benchmark <url> --baseline` — capture baseline (run before making changes)
-- `/benchmark <url> --quick` — single-pass timing check (no baseline needed)
-- `/benchmark <url> --pages /,/dashboard,/api/health` — specify pages
-- `/benchmark --diff` — benchmark only pages affected by current branch
-- `/benchmark --trend` — show performance trends from historical data
+## 使用者可觸發
+當使用者輸入 `/benchmark` 時，執行此 skill。
 
-## Instructions
+## 參數
+- `/benchmark <url>` — 完整效能稽核，附基準線比較
+- `/benchmark <url> --baseline` — 擷取基準線（在進行變更前執行）
+- `/benchmark <url> --quick` — 單次時間檢查（不需要基準線）
+- `/benchmark <url> --pages /,/dashboard,/api/health` — 指定頁面
+- `/benchmark --diff` — 只對當前 branch 影響的頁面進行 benchmark
+- `/benchmark --trend` — 從歷史數據顯示效能趨勢
 
-### Phase 1: Setup
+## 指令
+
+### 第一階段：設定
 
 ```bash
 eval "$($GSTACK_ROOT/bin/gstack-slug 2>/dev/null || echo "SLUG=unknown")"
@@ -397,57 +371,57 @@ mkdir -p .gstack/benchmark-reports
 mkdir -p .gstack/benchmark-reports/baselines
 ```
 
-### Phase 2: Page Discovery
+### 第二階段：頁面探索
 
-Same as /canary — auto-discover from navigation or use `--pages`.
+與 /canary 相同——從導航自動探索，或使用 `--pages`。
 
-If `--diff` mode:
+若為 `--diff` 模式：
 ```bash
 git diff $(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo main)...HEAD --name-only
 ```
 
-### Phase 3: Performance Data Collection
+### 第三階段：效能數據收集
 
-For each page, collect comprehensive performance metrics:
+對每個頁面收集完整的效能指標：
 
 ```bash
 $B goto <page-url>
 $B perf
 ```
 
-Then gather detailed metrics via JavaScript:
+然後透過 JavaScript 收集詳細指標：
 
 ```bash
 $B eval "JSON.stringify(performance.getEntriesByType('navigation')[0])"
 ```
 
-Extract key metrics:
-- **TTFB** (Time to First Byte): `responseStart - requestStart`
-- **FCP** (First Contentful Paint): from PerformanceObserver or `paint` entries
-- **LCP** (Largest Contentful Paint): from PerformanceObserver
-- **DOM Interactive**: `domInteractive - navigationStart`
-- **DOM Complete**: `domComplete - navigationStart`
-- **Full Load**: `loadEventEnd - navigationStart`
+提取關鍵指標：
+- **TTFB**（Time to First Byte）：`responseStart - requestStart`
+- **FCP**（First Contentful Paint）：來自 PerformanceObserver 或 `paint` entries
+- **LCP**（Largest Contentful Paint）：來自 PerformanceObserver
+- **DOM Interactive**：`domInteractive - navigationStart`
+- **DOM Complete**：`domComplete - navigationStart`
+- **Full Load**：`loadEventEnd - navigationStart`
 
-Resource analysis:
+資源分析：
 ```bash
 $B eval "JSON.stringify(performance.getEntriesByType('resource').map(r => ({name: r.name.split('/').pop().split('?')[0], type: r.initiatorType, size: r.transferSize, duration: Math.round(r.duration)})).sort((a,b) => b.duration - a.duration).slice(0,15))"
 ```
 
-Bundle size check:
+Bundle 大小檢查：
 ```bash
 $B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'script').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
 $B eval "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.initiatorType === 'css').map(r => ({name: r.name.split('/').pop().split('?')[0], size: r.transferSize})))"
 ```
 
-Network summary:
+網路摘要：
 ```bash
 $B eval "(() => { const r = performance.getEntriesByType('resource'); return JSON.stringify({total_requests: r.length, total_transfer: r.reduce((s,e) => s + (e.transferSize||0), 0), by_type: Object.entries(r.reduce((a,e) => { a[e.initiatorType] = (a[e.initiatorType]||0) + 1; return a; }, {})).sort((a,b) => b[1]-a[1])})})()"
 ```
 
-### Phase 4: Baseline Capture (--baseline mode)
+### 第四階段：基準線擷取（--baseline 模式）
 
-Save metrics to baseline file:
+將指標儲存至基準線檔案：
 
 ```json
 {
@@ -475,11 +449,11 @@ Save metrics to baseline file:
 }
 ```
 
-Write to `.gstack/benchmark-reports/baselines/baseline.json`.
+寫入 `.gstack/benchmark-reports/baselines/baseline.json`。
 
-### Phase 5: Comparison
+### 第五階段：比較
 
-If baseline exists, compare current metrics against it:
+若基準線存在，將當前指標與之比較：
 
 ```
 PERFORMANCE REPORT — [url]
@@ -507,14 +481,14 @@ REGRESSIONS DETECTED: 3
   [3] JS bundle +60% (450KB → 720KB) — new dependency or missing tree-shaking
 ```
 
-**Regression thresholds:**
-- Timing metrics: >50% increase OR >500ms absolute increase = REGRESSION
-- Timing metrics: >20% increase = WARNING
-- Bundle size: >25% increase = REGRESSION
-- Bundle size: >10% increase = WARNING
-- Request count: >30% increase = WARNING
+**退化閾值：**
+- 時間指標：增加 >50% 或絕對值增加 >500ms = REGRESSION
+- 時間指標：增加 >20% = WARNING
+- Bundle 大小：增加 >25% = REGRESSION
+- Bundle 大小：增加 >10% = WARNING
+- 請求數量：增加 >30% = WARNING
 
-### Phase 6: Slowest Resources
+### 第六階段：最慢的資源
 
 ```
 TOP 10 SLOWEST RESOURCES
@@ -533,9 +507,9 @@ RECOMMENDATIONS:
 - hero-image.webp: Add width/height to prevent CLS, consider lazy loading
 ```
 
-### Phase 7: Performance Budget
+### 第七階段：效能預算
 
-Check against industry budgets:
+對照行業標準檢查：
 
 ```
 PERFORMANCE BUDGET CHECK
@@ -552,9 +526,9 @@ HTTP Requests       < 50        58          FAIL
 Grade: B (4/6 passing)
 ```
 
-### Phase 8: Trend Analysis (--trend mode)
+### 第八階段：趨勢分析（--trend 模式）
 
-Load historical baseline files and show trends:
+載入歷史基準線檔案並顯示趨勢：
 
 ```
 PERFORMANCE TRENDS (last 5 benchmarks)
@@ -570,15 +544,15 @@ TREND: Performance degrading. LCP doubled in 8 days.
        JS bundle growing 50KB/week. Investigate.
 ```
 
-### Phase 9: Save Report
+### 第九階段：儲存報告
 
-Write to `.gstack/benchmark-reports/{date}-benchmark.md` and `.gstack/benchmark-reports/{date}-benchmark.json`.
+寫入 `.gstack/benchmark-reports/{date}-benchmark.md` 和 `.gstack/benchmark-reports/{date}-benchmark.json`。
 
-## Important Rules
+## 重要規則
 
-- **Measure, don't guess.** Use actual performance.getEntries() data, not estimates.
-- **Baseline is essential.** Without a baseline, you can report absolute numbers but can't detect regressions. Always encourage baseline capture.
-- **Relative thresholds, not absolute.** 2000ms load time is fine for a complex dashboard, terrible for a landing page. Compare against YOUR baseline.
-- **Third-party scripts are context.** Flag them, but the user can't fix Google Analytics being slow. Focus recommendations on first-party resources.
-- **Bundle size is the leading indicator.** Load time varies with network. Bundle size is deterministic. Track it religiously.
-- **Read-only.** Produce the report. Don't modify code unless explicitly asked.
+- **量測，不要猜測。** 使用真實的 performance.getEntries() 數據，而非估算。
+- **基準線至關重要。** 沒有基準線，你可以回報絕對數字，但無法偵測退化。永遠鼓勵擷取基準線。
+- **相對閾值，而非絕對值。** 2000ms 的載入時間對複雜儀表板來說可能沒問題，對登陸頁來說則很糟糕。與你自己的基準線比較。
+- **第三方 script 提供背景。** 標記它們，但使用者無法修復 Google Analytics 速度慢的問題。把建議集中在第一方資源上。
+- **Bundle 大小是領先指標。** 載入時間隨網路而變化。Bundle 大小是確定性的。要認真追蹤。
+- **唯讀。** 產出報告。除非明確要求，否則不要修改程式碼。

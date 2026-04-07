@@ -1,23 +1,22 @@
 ---
 name: unfreeze
 description: |
-  Clear the freeze boundary set by /freeze, allowing edits to all directories
-  again. Use when you want to widen edit scope without ending the session.
-  Use when asked to "unfreeze", "unlock edits", "remove freeze", or
-  "allow all edits". (gstack)
+  清除 /freeze 設定的編輯邊界，讓所有目錄都可以編輯。不需要結束 session，
+  直接擴大編輯範圍。
+  說「解凍」、「解除限制」、「取消 freeze」、「unfreeze」時觸發。
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
 <!-- Regenerate: bun run gen:skill-docs -->
 
-# /unfreeze — Clear Freeze Boundary
+# /unfreeze — 清除 Freeze 邊界
 
-Remove the edit restriction set by `/freeze`, allowing edits to all directories.
+移除 `/freeze` 設定的編輯限制，允許編輯所有目錄。
 
 ```bash
 mkdir -p ~/.gstack/analytics
 ```
 
-## Clear the boundary
+## 清除邊界
 
 ```bash
 STATE_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.gstack}"
@@ -30,6 +29,4 @@ else
 fi
 ```
 
-Tell the user the result. Note that `/freeze` hooks are still registered for the
-session — they will just allow everything since no state file exists. To re-freeze,
-run `/freeze` again.
+告知用戶執行結果。注意 `/freeze` hook 在這個 session 中仍然是已註冊的狀態——只是因為 state 檔案不存在，所以會放行所有操作。若要重新 freeze，再執行 `/freeze` 即可。
