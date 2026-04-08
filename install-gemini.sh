@@ -34,7 +34,22 @@ echo "📦 Installing skills..."
 SKILL_COUNT=0
 for skill_dir in "$SCRIPT_DIR"/.gemini/skills/gstack*; do
   skill_name="$(basename "$skill_dir")"
+  # 🔴 高風險：主動存取 Cookie/secrets/瀏覽器，可能洩漏公司機密
   [ "$skill_name" = "gstack-upgrade" ] && continue
+  [ "$skill_name" = "gstack-setup-browser-cookies" ] && continue
+  [ "$skill_name" = "gstack-cso" ] && continue
+  [ "$skill_name" = "gstack-open-gstack-browser" ] && continue
+  # 🟡 中風險：截圖/爬取內部頁面、自動部署、深度讀取 config
+  [ "$skill_name" = "gstack-browse" ] && continue
+  [ "$skill_name" = "gstack-canary" ] && continue
+  [ "$skill_name" = "gstack-ship" ] && continue
+  [ "$skill_name" = "gstack-land-and-deploy" ] && continue
+  [ "$skill_name" = "gstack-qa" ] && continue
+  [ "$skill_name" = "gstack-devex-review" ] && continue
+  [ "$skill_name" = "gstack-design-review" ] && continue
+  [ "$skill_name" = "gstack-benchmark" ] && continue
+  [ "$skill_name" = "gstack-investigate" ] && continue
+  [ "$skill_name" = "gstack-retro" ] && continue
   target="$GEMINI_SKILLS_DIR/$skill_name"
 
   # Remove existing link/dir
