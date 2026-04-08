@@ -1,12 +1,42 @@
 #!/usr/bin/env bash
 # gstack-gemini install — link gstack skills to Gemini CLI
+#
+# ┌─────────────────────────────────────────────────────────────┐
+# │  風險等級控制（預設：僅安裝低風險技能）                          │
+# │                                                             │
+# │  用法：                                                      │
+# │    ./install-gemini.sh               # 僅低風險 (預設)        │
+# │    RISK=medium ./install-gemini.sh   # 低風險 + 中風險        │
+# │    RISK=all    ./install-gemini.sh   # 全部安裝（含高風險）     │
+# │                                                             │
+# │  🔴 高風險技能（RISK=all 才安裝）：                            │
+# │    gstack-setup-browser-cookies — 讀取瀏覽器 Cookie          │
+# │    gstack-cso          — 掃描 secrets/.env/CI pipeline       │
+# │    gstack-open-gstack-browser — AI 控制真實 Chrome           │
+# │                                                             │
+# │  🟡 中風險技能（RISK=medium 或 RISK=all 才安裝）：             │
+# │    gstack-browse       — 截圖/爬取網頁內容                    │
+# │    gstack-canary       — 監控 production 截圖                │
+# │    gstack-ship         — 自動 commit/push/建 PR              │
+# │    gstack-land-and-deploy — 自動 merge 並部署                │
+# │    gstack-qa           — 瀏覽器自動化 QA                      │
+# │    gstack-devex-review — 瀏覽內部文件站測試                   │
+# │    gstack-design-review — 截圖 live site 分析                │
+# │    gstack-benchmark    — 對內部系統發 HTTP 測速請求            │
+# │    gstack-investigate  — 深度讀取 config/log 除錯             │
+# │    gstack-retro        — 讀取 git log 含敏感 commit message   │
+# └─────────────────────────────────────────────────────────────┘
 set -e
+
+# 讀取風險等級參數，預設為 low（僅安裝低風險技能）
+RISK="${RISK:-low}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 GEMINI_SKILLS_DIR="$HOME/.gemini/skills"
 
 echo "🚀 gstack-gemini installer"
 echo "=========================="
+echo "風險等級：$RISK"
 echo ""
 
 # Check Gemini CLI
@@ -34,22 +64,29 @@ echo "📦 Installing skills..."
 SKILL_COUNT=0
 for skill_dir in "$SCRIPT_DIR"/.gemini/skills/gstack*; do
   skill_name="$(basename "$skill_dir")"
-  # 🔴 高風險：主動存取 Cookie/secrets/瀏覽器，可能洩漏公司機密
+  # 永遠跳過 upgrade（透過其他方式更新）
   [ "$skill_name" = "gstack-upgrade" ] && continue
-  [ "$skill_name" = "gstack-setup-browser-cookies" ] && continue
-  [ "$skill_name" = "gstack-cso" ] && continue
-  [ "$skill_name" = "gstack-open-gstack-browser" ] && continue
-  # 🟡 中風險：截圖/爬取內部頁面、自動部署、深度讀取 config
-  [ "$skill_name" = "gstack-browse" ] && continue
-  [ "$skill_name" = "gstack-canary" ] && continue
-  [ "$skill_name" = "gstack-ship" ] && continue
-  [ "$skill_name" = "gstack-land-and-deploy" ] && continue
-  [ "$skill_name" = "gstack-qa" ] && continue
-  [ "$skill_name" = "gstack-devex-review" ] && continue
-  [ "$skill_name" = "gstack-design-review" ] && continue
-  [ "$skill_name" = "gstack-benchmark" ] && continue
-  [ "$skill_name" = "gstack-investigate" ] && continue
-  [ "$skill_name" = "gstack-retro" ] && continue
+
+  # 🔴 高風險技能：僅在 RISK=all 時安裝
+  if [ "$RISK" != "all" ]; then
+    [ "$skill_name" = "gstack-setup-browser-cookies" ] && continue  # 讀取 Cookie
+    [ "$skill_name" = "gstack-cso" ] && continue                   # 掃描 secrets
+    [ "$skill_name" = "gstack-open-gstack-browser" ] && continue   # AI 控制瀏覽器
+  fi
+
+  # 🟡 中風險技能：僅在 RISK=medium 或 RISK=all 時安裝
+  if [ "$RISK" = "low" ]; then
+    [ "$skill_name" = "gstack-browse" ] && continue
+    [ "$skill_name" = "gstack-canary" ] && continue
+    [ "$skill_name" = "gstack-ship" ] && continue
+    [ "$skill_name" = "gstack-land-and-deploy" ] && continue
+    [ "$skill_name" = "gstack-qa" ] && continue
+    [ "$skill_name" = "gstack-devex-review" ] && continue
+    [ "$skill_name" = "gstack-design-review" ] && continue
+    [ "$skill_name" = "gstack-benchmark" ] && continue
+    [ "$skill_name" = "gstack-investigate" ] && continue
+    [ "$skill_name" = "gstack-retro" ] && continue
+  fi
   target="$GEMINI_SKILLS_DIR/$skill_name"
 
   # Remove existing link/dir
